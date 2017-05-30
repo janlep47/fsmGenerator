@@ -1,31 +1,9 @@
 //ModInput.java
 
-/*
-        numberStatesDesired = 5;
-        numberEventsDesired = 3;
-        //maxNumberEventsPerState = 2;
-        //minNumberEventsPerState = 1;
-        //  1/1 works    1/0 DOESN'T WORK    2/0 DOESN'T WORK
-        maxNumberEventsPerState = 2;
-        minNumberEventsPerState = 0;
-        //
-        //percentLoopingTransitions = 1.0/4;
-        //percentSelfLooping = 1.0/3;
-        percentLoopingTransitions = 0.0;
-        percentSelfLooping = 0.0;
-
-        oneOverNumPossibleTrans = 1.0 /
-            (maxNumberEventsPerState - minNumberEventsPerState + 1);
-        oneOverNumberEvents = 1.0 / numberEventsDesired;
-*/
-
 import java.awt.*;
 import java.awt.event.*;
 import java.text.*;
 import java.io.*;  // NEW
-
-
-
 
 
 
@@ -35,12 +13,15 @@ public class ModInput extends Panel implements ItemListener, KeyListener {
     public Checkbox ch;
     public  Button enter;
 
-    private Label labNumStates, labNumEvents, labMaxEventsPerState, labMinEventsPerState,
+    private Label labFsmFileName,
+        labNumStates, labNumEvents,
+        labMaxEventsPerState, labMinEventsPerState,
         labPercentLoops, labPercentSelfLoops;
+    private TextField textFsmFileName;
     private TextField textNumStates, textNumEvents;
     private TextField textMaxEventsPerState, textMinEventsPerState;
     private TextField textPercentLoops, textPercentSelfLoops;
-    private Panel p1, p2, p3, p4, p5, p6, p7, p8, p9;
+    private Panel p0, p1, p2, p3, p4, p5, p6, p7, p8, p9;
     private boolean digitEntered = false;
     
     private Font labelfont, titlefont;
@@ -91,6 +72,7 @@ public class ModInput extends Panel implements ItemListener, KeyListener {
         p3 = new Panel();
         p4 = new Panel();
         p5 = new Panel();
+        p0 = new Panel();
         p6 = new Panel();
         p7 = new Panel();
         p8 = new Panel();
@@ -143,6 +125,18 @@ public class ModInput extends Panel implements ItemListener, KeyListener {
         p5.add(labMinEventsPerState);
         p5.add(textMinEventsPerState);
         
+    labFsmFileName = new Label("FSM file name: ",Label.RIGHT);
+        labFsmFileName.setFont(labelfont);
+        labFsmFileName.setForeground(Color.black);
+        
+        textFsmFileName = new TextField(5);
+        textFsmFileName.setFont(labelfont);
+        textFsmFileName.setForeground(Color.black);
+        textFsmFileName.setText("");
+        
+        p0.add(labFsmFileName);
+        p0.add(textFsmFileName);
+        
         
     ch = new Checkbox("  Any looping states",false);
         
@@ -192,12 +186,14 @@ public class ModInput extends Panel implements ItemListener, KeyListener {
         gbc.gridy = 4;
         add(p5,gbc);
         gbc.gridy = 5;
-        add(p6,gbc);
+        add(p0,gbc);
         gbc.gridy = 6;
-        add(p7,gbc);
+        add(p6,gbc);
         gbc.gridy = 7;
-        add(p8,gbc);
+        add(p7,gbc);
         gbc.gridy = 8;
+        add(p8,gbc);
+        gbc.gridy = 9;
         add(p9,gbc);
         
         p7.setVisible(false);
@@ -234,11 +230,6 @@ public class ModInput extends Panel implements ItemListener, KeyListener {
         }
         return numEvents;
     }
-
-    public boolean getAnyLoops() {
-        boolean anyLoops = ch.getState();
-        return anyLoops;
-    }
     
     
     public int getMaxEventsPerState() {
@@ -262,6 +253,17 @@ public class ModInput extends Panel implements ItemListener, KeyListener {
         return minEventsPerState;
     }
     
+    
+    public String getFsmFileName() {
+        return textFsmFileName.getText();
+    }
+    
+    
+    public boolean getAnyLoops() {
+        boolean anyLoops = ch.getState();
+        return anyLoops;
+    }
+
     
     public int getPercentLoops() {
         int percentLoops;
