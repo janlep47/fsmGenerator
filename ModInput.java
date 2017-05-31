@@ -4,6 +4,8 @@ import java.awt.*;
 import java.awt.event.*;
 import java.text.*;
 import java.io.*;  // NEW
+import javax.swing.*;
+import javax.swing.filechooser.*;
 
 
 
@@ -198,7 +200,7 @@ public class ModInput extends Panel implements ItemListener, KeyListener {
         
         p7.setVisible(false);
         p8.setVisible(false);
-
+        
 
         ch.addItemListener(this);
         textNumStates.addKeyListener(this);
@@ -207,6 +209,35 @@ public class ModInput extends Panel implements ItemListener, KeyListener {
         textMinEventsPerState.addKeyListener(this);
         textPercentLoops.addKeyListener(this);
         textPercentSelfLoops.addKeyListener(this);
+    }
+    
+    
+    
+    public String getOutputFSMfilname() {
+        JFileChooser chooser = new JFileChooser();
+        
+        chooser.setSelectedFile(new File("newFSM.fsm"));
+        
+        FileNameExtensionFilter filter = new FileNameExtensionFilter(
+            "FSM files", "fsm");
+        chooser.setFileFilter(filter);
+        Frame parent = (Frame) getParent();
+        int returnVal = chooser.showSaveDialog(parent);
+        if(returnVal == JFileChooser.APPROVE_OPTION) {
+            System.out.println("You chose to open this file: " +
+                                chooser.getSelectedFile().getName());
+            System.out.println(" ... this is the current directory: " +
+                               chooser.getCurrentDirectory().getName());
+            System.out.println(" ... path: " +
+                               chooser.getSelectedFile().getPath());
+            System.out.println(" ... 2 path: " +
+                               chooser.getSelectedFile().getAbsolutePath());
+            //System.out.println(" ... 3 path: " +
+            //                   chooser.getSelectedFile().getCanonicalPath());
+        }
+        if(returnVal == JFileChooser.APPROVE_OPTION)
+            return chooser.getSelectedFile().getPath();
+        return null;
     }
     
     
