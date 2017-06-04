@@ -54,8 +54,10 @@ public class FsmGenerator extends JFrame implements ActionListener,
     private double percentSelfLooping;
                                                         
     private String fsmOutputFilename;
-    
-
+                                                        
+                                                        
+                                                        
+                                                        
                                                         
     public static void main(String[] args){
         FsmGenerator f = new FsmGenerator();
@@ -104,7 +106,6 @@ public class FsmGenerator extends JFrame implements ActionListener,
         statesMap = processedStates;
     }
 
-
     private void generateStateList() {
         for (int i = 0; i < numberStatesDesired; i++) {
             String stateName = String.valueOf(i);
@@ -133,6 +134,7 @@ public class FsmGenerator extends JFrame implements ActionListener,
 
 
     private void makeChildren(State s) {
+        System.out.println(s.getName());
         // Get a random number of transitions from this state:
         int numberTransitions = getRandomNumberOfTransitions();
         // Initialize local lists
@@ -205,6 +207,8 @@ public class FsmGenerator extends JFrame implements ActionListener,
         return randValue;
     }
 
+                                                        
+                                                        
     private Event getRandomEvent() {
         int randValue = (int) (Math.random() / oneOverNumberEvents);
         int asciiChar = 'a';
@@ -216,6 +220,11 @@ public class FsmGenerator extends JFrame implements ActionListener,
         else 
             eventName = String.valueOf((char) newAsciiChar) +
                 String.valueOf((char) (asciiChar + asciiChar2));
+        
+        
+        //int newAsciiChar = 'a';
+        //String eventName = String.valueOf((char) newAsciiChar);
+        
         Event event = eventList.get(eventName);
         return event;
     }
@@ -295,8 +304,15 @@ public class FsmGenerator extends JFrame implements ActionListener,
         // Now get the list of unprocessStates, so that we can index into it,
         //  rather than using a get:
         Set<String> keys = unprocessedStates.keySet();
-        String[] stateNames = keys.toArray(new String[0]);
-        if (size == 1) return unprocessedStates.get(stateNames[0]);
+        String[] stateNames = keys.toArray(new String[keys.size()]);
+        
+        // if only one unprocessed state, return it IF it's not the same as the parent state
+        //  (because this routine is for non-self looping transitions)
+        if (size == 1) {
+            if (s != unprocessedStates.get(stateNames[0]))
+                return unprocessedStates.get(stateNames[0]);
+            else return null;
+        }
         
         double oneOverSize = 1.0 / size;
 
@@ -311,6 +327,7 @@ public class FsmGenerator extends JFrame implements ActionListener,
         } while (nextState == s);
         return nextState;
     }
+                                                        
 
     
     // For the case of minNumberEventsPerState = 0, and still some 
@@ -415,19 +432,6 @@ public class FsmGenerator extends JFrame implements ActionListener,
         return numberTransitions;
     }
 
-// *****************************************
-
-    //public static void main(String[] args) {
-    //    FsmGenerator fsmGenerator = new FsmGenerator();
-    //    fsmGenerator.doit();
-    //    fsmGenerator.printIt();
-    //    fsmGenerator.writeOutputFsmfile();
-    //}
-                                                        
-                                                        
-                                                        
-
-
     public void windowClosing(WindowEvent e) {
         dispose();
         System.exit(0);
@@ -460,7 +464,7 @@ public class FsmGenerator extends JFrame implements ActionListener,
             oneOverNumPossibleTrans = 1.0 /
                 (maxNumberEventsPerState - minNumberEventsPerState + 1);
             oneOverNumberEvents = 1.0 / numberEventsDesired;
-            
+
             fsmOutputFilename = inputPanel.getOutputFSMfilname();
             
             // Now can create the random fsm with the user-requested parameters:
