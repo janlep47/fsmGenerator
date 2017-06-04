@@ -1,3 +1,5 @@
+import java.awt.*;
+import java.awt.event.*;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
@@ -15,10 +17,15 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import javax.swing.*;
+
+
 // NOTE:  Should this create non-deterministic fsm's?  Meaning that a state can
 //   have the same event lead to multiple different states.  For now, NO!
 
-public class FsmGenerator {
+public class FsmGenerator extends JFrame implements ActionListener,
+                                                    WindowListener {
+    FsmInput inputPanel;
 
     private HashMap<String, State> statesMap;
 
@@ -45,10 +52,36 @@ public class FsmGenerator {
     //   states whose next state is itself (self-looping); this will also be a
     //   number from 0.0 to 1.0
     private double percentSelfLooping;
+                                                        
+    private String fsmOutputFilename;
     
 
+                                                        
+    public static void main(String[] args){
+        FsmGenerator f = new FsmGenerator();
+        f.setSize(480,412);
+        f.setVisible(true);
+        f.setLayout(null);
+    }
 
     public FsmGenerator() {
+        setTitle("FsmGenerator");
+        setLayout(null);
+        inputPanel = new FsmInput();
+        inputPanel.setBounds(10,10,460,369);
+        inputPanel.setVisible(true);
+        
+        inputPanel.initialize();
+        
+        Container cp;
+        cp = this.getContentPane();
+        cp.add(inputPanel);
+        
+        //Listeners
+        this.addWindowListener(this);
+        inputPanel.enter.addActionListener(this);
+
+        // Initialize data structures
         statesMap = new HashMap<String, State>();
         unprocessedStates = new HashMap<String, State>();
         processedStates = new HashMap<String, State>();
@@ -57,7 +90,6 @@ public class FsmGenerator {
 
 
     public void doit() {
-        promptUserForParameters();
         generateStateList();
         generateEventList();
         // For now, start off with only 1 initial state, and make it be '0':
@@ -72,25 +104,6 @@ public class FsmGenerator {
         statesMap = processedStates;
     }
 
-    private void promptUserForParameters() {
-        // FOR NOW!!
-        numberStatesDesired = 5;
-        numberEventsDesired = 3;
-        //maxNumberEventsPerState = 2;
-        //minNumberEventsPerState = 1;
-        //  1/1 works    1/0 DOESN'T WORK    2/0 DOESN'T WORK
-        maxNumberEventsPerState = 2;
-        minNumberEventsPerState = 0;
-        //
-        //percentLoopingTransitions = 1.0/4;
-        //percentSelfLooping = 1.0/3;
-        percentLoopingTransitions = 0.0;
-        percentSelfLooping = 0.0;
-
-        oneOverNumPossibleTrans = 1.0 /
-            (maxNumberEventsPerState - minNumberEventsPerState + 1);
-        oneOverNumberEvents = 1.0 / numberEventsDesired;
-    }
 
     private void generateStateList() {
         for (int i = 0; i < numberStatesDesired; i++) {
@@ -356,13 +369,8 @@ public class FsmGenerator {
 // ****************************************
 
 
-    private String getFsmFilename() {
-        return "fsmExample1.fsm"; // FOR NOW ...
-    }
-
-
     public void writeOutputFsmfile() {
-        String outFileName = getFsmFilename();
+        String outFileName = fsmOutputFilename;
         PrintWriter fileWriter;
         try {
             fileWriter = new PrintWriter(outFileName);
@@ -409,10 +417,58 @@ public class FsmGenerator {
 
 // *****************************************
 
-    public static void main(String[] args) {
-        FsmGenerator fsmGenerator = new FsmGenerator();
-        fsmGenerator.doit();
-        fsmGenerator.printIt();
-        fsmGenerator.writeOutputFsmfile();
+    //public static void main(String[] args) {
+    //    FsmGenerator fsmGenerator = new FsmGenerator();
+    //    fsmGenerator.doit();
+    //    fsmGenerator.printIt();
+    //    fsmGenerator.writeOutputFsmfile();
+    //}
+                                                        
+                                                        
+                                                        
+
+
+    public void windowClosing(WindowEvent e) {
+        dispose();
+        System.exit(0);
     }
+    
+    public void windowOpened(WindowEvent evt){}
+    
+    public void windowIconified(WindowEvent evt){}
+    
+    public void windowClosed(WindowEvent evt){}
+    
+    public void windowDeiconified(WindowEvent evt){}
+    
+    public void windowActivated(WindowEvent evt){}
+    
+    public void windowDeactivated(WindowEvent evt){}
+
+
+
+    public void actionPerformed(ActionEvent evt){
+        
+        if (evt.getSource()==inputPanel.enter){
+            numberStatesDesired = inputPanel.getNumStates();
+            numberEventsDesired = inputPanel.getNumEvents();
+            maxNumberEventsPerState = inputPanel.getMaxEventsPerState();
+            minNumberEventsPerState = inputPanel.getMinEventsPerState();
+            percentLoopingTransitions = inputPanel.getPercentLoopingTransitions();
+            percentSelfLooping = inputPanel.getPercentSelfLooping();
+            
+            oneOverNumPossibleTrans = 1.0 /
+                (maxNumberEventsPerState - minNumberEventsPerState + 1);
+            oneOverNumberEvents = 1.0 / numberEventsDesired;
+            
+            fsmOutputFilename = inputPanel.getOutputFSMfilname();
+            
+            // Now can create the random fsm with the user-requested parameters:
+            doit();
+            //printIt();  // write stuff to terminal
+            writeOutputFsmfile();
+            System.exit(0);
+        }
+    }
+                                                        
 }
