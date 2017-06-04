@@ -201,7 +201,9 @@ public class FsmInput extends JPanel implements ItemListener {
     
     
     public String getOutputFSMfilname() {
-        JFileChooser chooser = new JFileChooser();
+        String filePath = System.getProperty("user.dir");
+        
+        JFileChooser chooser = new JFileChooser(filePath);
         chooser.setSelectedFile(new File("newFSM.fsm"));
         FileNameExtensionFilter filter = new FileNameExtensionFilter("FSM files", "fsm");
         chooser.setFileFilter(filter);
