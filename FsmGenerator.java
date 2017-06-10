@@ -10,10 +10,11 @@ import java.util.Map;
 import java.util.Stack;
 import java.util.TreeSet;
 import java.util.SortedSet;
+import java.util.Vector;
 //
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.Stack;
 import java.util.List;
 import java.util.Set;
 
@@ -33,7 +34,9 @@ public class FsmGenerator extends JFrame implements ActionListener,
     private HashMap<String, State> processedStates;
 
     private HashMap<String, Event> eventList;
-
+                                                        
+    private Vector<String> stateNames;
+    private Vector<String> eventNames;
     
 
     private int numberStatesDesired;
@@ -88,15 +91,19 @@ public class FsmGenerator extends JFrame implements ActionListener,
         unprocessedStates = new HashMap<String, State>();
         processedStates = new HashMap<String, State>();
         eventList = new HashMap<String, Event>();
+        stateNames = new Vector<String>();
+        eventNames = new Vector<String>();
     }
 
 
     public void doit() {
+        // Create states and events:
         generateStateList();
         generateEventList();
+        
         // For now, start off with only 1 initial state, and make it be '0':
         State initialState = unprocessedStates.get("0");
-        makeChildren(initialState);
+        makeChildren(initialState, true);
         // For case when minNumberEventsPerState = 0, there may be 
         //  unprocessed states left; if so, these need to be tacked on 
         //  to some of the processed state(s), so that ALL the states are
@@ -110,6 +117,7 @@ public class FsmGenerator extends JFrame implements ActionListener,
         for (int i = 0; i < numberStatesDesired; i++) {
             String stateName = String.valueOf(i);
             unprocessedStates.put(stateName, new State(stateName));
+            stateNames.add(stateName);
         }
     }
 
@@ -117,6 +125,7 @@ public class FsmGenerator extends JFrame implements ActionListener,
         for (int i = 0; i < numberEventsDesired; i++) {
             String eventName = getEventName(i);
             eventList.put(eventName, new Event(eventName));
+            eventNames.add(eventName);
         }
     }
 
@@ -133,30 +142,40 @@ public class FsmGenerator extends JFrame implements ActionListener,
     }
 
 
-    private void makeChildren(State s) {
+    private void makeChildren(State s, boolean isInitialState) {
+        // ONLY create children for this state, if there isn't any already:
+        if (s.getNumberOfTransitions() > 0) return;
+        // ONLY create children for this state, it not already done:
+        if (processedStates.get(s.getName()) != null) {
+            if (unprocessedStates.get(s.getName()) != null)
+                unprocessedStates.remove(s.getName());
+            return;
+        }
         System.out.println(s.getName());
         // Get a random number of transitions from this state:
         int numberTransitions = getRandomNumberOfTransitions();
-        // Initialize local lists
-        State[] nextStates = new State[numberTransitions];
-        Event[] stateEvents = new Event[numberTransitions];
+        
+        if (isInitialState && numberTransitions == 0)
+            numberTransitions = 1;
+        
         State nextState;
         Event event;
+        Vector<State> nextStates = new Vector<State>();
         for (int i = 0; i < numberTransitions; i++) {
             // force deterministic for now
             do {
                 // Get a random (child) event
                 event = getRandomEvent();
-            } while (eventAlreadyUsed(event, i-1, stateEvents));
-            stateEvents[i] = event;
+            } while (eventAlreadyUsed(s, event));
             // Now get a random next state that this event will lead to
             do {
                 nextState = getRandomState(s);
-                if (nextState == null) return; // OR do the createTransitions
-                                              //  stuff, and THEN return!
-            } while (stateAlreadyUsed(nextState, i-1, nextStates));
-            nextStates[i] = nextState;
-            s.createTransition(event, nextState);
+                if (nextState == null) break;
+            } while (stateAlreadyUsed(s, nextState));
+            if (nextState != null) {
+                s.createTransition(event, nextState);
+                nextStates.add(nextState);
+            }
         }
        // Now, add the (parent) state to the list of processed states
         processedStates.put(s.getName(), s);
@@ -164,10 +183,10 @@ public class FsmGenerator extends JFrame implements ActionListener,
         unprocessedStates.remove(s.getName());
 
         // Continue making children states for each of this states children states
-        for (int i = 0; i < numberTransitions; i++) {
-            nextState = nextStates[i];
+        for (int i = 0; i < nextStates.size(); i++) {
+            nextState = nextStates.get(i);
             if (!aProcessedState(nextState))
-                makeChildren(nextState);
+                makeChildren(nextState, false);
         }
         return;
     }
@@ -181,20 +200,24 @@ public class FsmGenerator extends JFrame implements ActionListener,
     }
 
 
-    private boolean eventAlreadyUsed(Event event, int index, Event[] stateEvents) {
-        for (int i = 0; i <= index; i++) {
-            Event e = stateEvents[i];
-            if (e == null) continue;
-            if (e == event) return true;
+    private boolean eventAlreadyUsed(State s, Event e) {
+        HashMap<Event, ArrayList<State>> transitions = s.getAllTransitions();
+        for (Map.Entry<Event, ArrayList<State>> transition : transitions.entrySet()) {
+            Event event = transition.getKey();
+            if (event == e) return true;
         }
         return false;
     }
 
-    private boolean stateAlreadyUsed(State state, int index, State[] nextStates) {
-        for (int i = 0; i <= index; i++) {
-            State s = nextStates[i];
-            if (s == null) continue;
-            if (s == state) return true;
+    private boolean stateAlreadyUsed(State s, State nextS) {
+        HashMap<Event, ArrayList<State>> transitions = s.getAllTransitions();
+        for (Map.Entry<Event, ArrayList<State>> transition : transitions.entrySet()) {
+            Event event = transition.getKey();
+            ArrayList<State> nextStates = transition.getValue();
+            for (int i = 0; i < nextStates.size(); i++) {
+                State nextState = nextStates.get(i);
+                if (nextState == nextS) return true;
+            }
         }
         return false;
     }
