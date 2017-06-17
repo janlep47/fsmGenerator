@@ -408,7 +408,22 @@ public class FsmGenerator extends JFrame implements ActionListener,
 
 // ****************************************
 
-
+    //  File format:
+    //
+    //  <total number of states> <number of initial states ... 1 for now>
+    //
+    //  <state name1>  <# of transitions from this state>
+    //  <event name>  <next state>
+    //  .              .
+    //  .              .
+    //  .              .
+    //  <event name>  <next state>
+    //
+    //  <state name2>  <# of transitions from this state>
+    //  <event name2>  <next state>
+    //  .
+    //  .
+    //  .
     public void writeOutputFsmfile() {
         String outFileName = fsmOutputFilename;
         PrintWriter fileWriter;
@@ -426,8 +441,8 @@ public class FsmGenerator extends JFrame implements ActionListener,
             State state = statesMap.get(key);
             HashMap<Event, ArrayList<State>> transitions =
                 state.getAllTransitions();
-            fileWriter.println(state.getName() + "\t" + "0" +
-                               "\t" + String.valueOf(getTotalNumberOfTransitions(transitions)));
+            fileWriter.println(state.getName() + "\t" +
+                               String.valueOf(getTotalNumberOfTransitions(transitions)));
             for (Map.Entry<Event, ArrayList<State>> transition : transitions.entrySet()) {
                 Event event = transition.getKey();
                 ArrayList<State> nextStates = transition.getValue();
@@ -435,8 +450,7 @@ public class FsmGenerator extends JFrame implements ActionListener,
                 for (int i = 0; i < nextStates.size(); i++) {
                     State nextState = nextStates.get(i);
                     fileWriter.println(event.getName() + "\t" +
-                                       nextState.getName() + "\t" +
-                                       "c" + "\t" + "o");
+                                       nextState.getName() );
                 }
             }
         }
