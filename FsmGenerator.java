@@ -101,12 +101,85 @@ public class FsmGenerator extends JFrame implements ActionListener,
         // For now, start off with only 1 initial state, and make it be '0':
         State initialState = unprocessedStates.get("0");
         makeChildren(initialState, true);
-        // For case when minNumberEventsPerState = 0, there may be 
-        //  unprocessed states left; if so, these need to be tacked on 
-        //  to some of the processed state(s), so that ALL the states are
-        //  part of the fsm
-        if (unprocessedStates.size() != 0) 
-            fitInRemainingUnusedStates();
+        
+        Stack<State> unprocessedChildren = new Stack<State>();
+        Stack<State> processedChildren = new Stack<State>();
+        
+        // Put all children of the initial state into the unprocessedChildren stack:
+        saveUnprocessedChildren(initialState, unprocessedChildren);
+        State s;
+        do {
+            while (unprocessedChildren.size() != 0) {
+                s = unprocessedChildren.pop();
+                makeChildren(s, false);
+                processedChildren.push(s);
+            }
+            
+            // If all the states have been assigned children (min to max - possibly 0),
+            //  no need to find any more children states:
+            if (unprocessedStates.size() == 0) break;
+            
+            // Now, all child states have been processed (new children created for each of the previous
+            //  child states).  For each processed child state, find all of their child states and add
+            //  to the unprocessedChildren stack.
+            while (processedChildren.size() != 0) {
+                s = processedChildren.pop();
+                saveUnprocessedChildren(s, unprocessedChildren);
+            }
+        } while (unprocessedChildren.size() != 0  &&  processedStates.size() < stateNames.size());
+        
+        //
+        // ************  Do some final processing  ************
+        //
+        // if unprocessedStates is NOT empty we need to tie these into the fsm:
+        if (unprocessedStates.size() != 0) {
+            
+            //SortedSet<String> keys = new TreeSet<String>(unprocessedStates.keySet());
+            HashSet<String> keys = new HashSet<String>(unprocessedStates.keySet());
+            //HashSet<String> keys = (HashSet<String>) skeys.clone();
+            for (String key : keys) {
+                s = unprocessedStates.get(key);
+                
+                // If this unprocessed state is NOT a child of some other state, it needs to be added into
+                //  the FSM as a child of some state already in the FSM:
+                if (!stateIsChildStateSomewhere(s)) {
+                    State childState = s;
+                    Vector<String> fsmStates = (Vector<String>) stateNames.clone();
+                    
+                    State okParent;
+                    State goodParent = null;
+                    
+                    // Find a potential parent state which doesn't already a number of transitions
+                    //  equal to the maxNumberEventsPerState:
+                    do {
+                        int randValue = (int) (Math.random() * fsmStates.size());
+                        String stateName = fsmStates.elementAt(randValue);
+                        okParent = processedStates.get(stateName);
+                        if (okParent == null)
+                            okParent = unprocessedStates.get(stateName);
+                        fsmStates.remove(randValue);
+                        if (okParent.getNumberOfTransitions() < maxNumberEventsPerState) {
+                            goodParent = okParent;
+                            Vector<String> fsmEvents = findUnusedEvents(goodParent);
+                            randValue = (int) (Math.random() * fsmEvents.size());
+                            String eventName = fsmEvents.elementAt(randValue);
+                            Event e = eventList.get(eventName);
+                            goodParent.createTransition(e,childState);
+                            break;
+                        }
+                    } while (fsmStates.size() > 0);
+                    if (goodParent == null) {
+                        Vector<String> fsmEvents = findUnusedEvents(okParent);
+                        int randValue = (int) (Math.random() * fsmEvents.size());
+                        String eventName = fsmEvents.elementAt(randValue);
+                        Event e = eventList.get(eventName);
+                        okParent.createTransition(e,childState); // oh well, too many transitions ...
+                    }
+                }
+                processedStates.put(s.getName(),s);
+                unprocessedStates.remove(s.getName());
+            }
+        }
         statesMap = processedStates;
     }
 
@@ -137,6 +210,61 @@ public class FsmGenerator extends JFrame implements ActionListener,
             return String.valueOf((char) newAsciiChar) +
                 String.valueOf((char) (asciiChar + asciiChar2));
     }
+                                                        
+                                                                 
+    private Vector<String> findUnusedEvents(State s) {
+        Vector<String> fsmEvents = (Vector<String>) eventNames.clone();
+        HashMap<Event, ArrayList<State>> transitions = s.getAllTransitions();
+        for (Map.Entry<Event, ArrayList<State>> transition : transitions.entrySet()) {
+            Event event = transition.getKey();
+            for (int i = 0; i < fsmEvents.size(); i++) {
+                if ( ((String) fsmEvents.elementAt(i)).equals(event.getName()))
+                    fsmEvents.remove(i);
+            }
+        }
+        return fsmEvents;
+    }
+        
+                                                        
+                                                        
+    private void saveUnprocessedChildren(State s, Stack<State> unprocessedChildren) {
+        HashMap<Event, ArrayList<State>> transitions = s.getAllTransitions();
+        for (Map.Entry<Event, ArrayList<State>> transition : transitions.entrySet()) {
+            Event event = transition.getKey();
+            ArrayList<State> nextStates = transition.getValue();
+            if (nextStates == null) continue;
+            for (int i = 0; i < nextStates.size(); i++) {
+                State nextState = nextStates.get(i);
+                // Important: if state s has a transition to itself, don't add it to the unprocessed
+                //  children stack; also don't add the transition state, if it has already been processed
+                if (nextState != s && processedStates.get(nextState.getName()) == null)
+                    unprocessedChildren.push(nextState);
+            }
+        }
+    }
+
+ 
+            
+    private boolean stateIsChildStateSomewhere(State s) {
+        SortedSet<String> keys = new TreeSet<String>(processedStates.keySet());
+        for (String key : keys) {
+            State state = processedStates.get(key);
+            HashMap<Event, ArrayList<State>> transitions =
+            state.getAllTransitions();
+            for (Map.Entry<Event, ArrayList<State>> transition : transitions.entrySet()) {
+                Event event = transition.getKey();
+                ArrayList<State> nextStates = transition.getValue();
+                if (nextStates == null) continue;
+                for (int i = 0; i < nextStates.size(); i++) {
+                    State nextState = nextStates.get(i);
+                    if (nextState == s) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+        
 
 
     private void makeChildren(State s, boolean isInitialState) {
@@ -148,77 +276,57 @@ public class FsmGenerator extends JFrame implements ActionListener,
                 unprocessedStates.remove(s.getName());
             return;
         }
-        System.out.println(s.getName());
+
         // Get a random number of transitions from this state:
         int numberTransitions = getRandomNumberOfTransitions();
         
         if (isInitialState && numberTransitions == 0)
             numberTransitions = 1;
         
+        // Initialize local lists
+        
+        //Vector<String> availStates = new Vector<String>();
+        //availStates.clone(stateNames);
+        Vector<String> availStates = (Vector<String>) stateNames.clone();
+        
+        //Vector<String> availEvents = new Vector<String>();
+        //availEvents.clone(eventNames);
+        Vector<String> availEvents = (Vector<String>) eventNames.clone();
+        
         State nextState;
         Event event;
-        Vector<State> nextStates = new Vector<State>();
+        
         for (int i = 0; i < numberTransitions; i++) {
-            // force deterministic for now
-            do {
-                // Get a random (child) event
-                event = getRandomEvent();
-            } while (eventAlreadyUsed(s, event));
-            // Now get a random next state that this event will lead to
-            do {
-                nextState = getRandomState(s);
-                if (nextState == null) break;
-            } while (stateAlreadyUsed(s, nextState));
-            if (nextState != null) {
-                s.createTransition(event, nextState);
-                nextStates.add(nextState);
+            event = null;
+            nextState = null;
+            // force deterministic for now; get a random (child) event
+            if (availEvents.size() > 0) {
+                int randValue = (int) (Math.random() * availEvents.size());
+                String eventName = availEvents.elementAt(randValue);
+                event = eventList.get(eventName);
+                availEvents.remove(randValue);
             }
+            if (event == null) break;
+
+            // Now get a random next state that this event will lead to
+            if (availStates.size() > 0){
+                int randValue = (int) (Math.random() * availStates.size());
+                String stateName = availStates.elementAt(randValue);
+                nextState = unprocessedStates.get(stateName);
+                if (nextState == null)
+                    nextState = processedStates.get(stateName);
+                availStates.remove(randValue);
+            }
+            if (nextState == null) break;
+            s.createTransition(event, nextState);
         }
        // Now, add the (parent) state to the list of processed states
         processedStates.put(s.getName(), s);
         //  and remove this (parent) state from the list of unprocessed states:
         unprocessedStates.remove(s.getName());
-
-        // Continue making children states for each of this states children states
-        for (int i = 0; i < nextStates.size(); i++) {
-            nextState = nextStates.get(i);
-            if (!aProcessedState(nextState))
-                makeChildren(nextState, false);
-        }
         return;
     }
 
-
-    private boolean aProcessedState(State s) {
-        String name = s.getName();
-        State state = processedStates.get(name);
-        if (state != null) return true;
-        return false;
-    }
-
-
-    private boolean eventAlreadyUsed(State s, Event e) {
-        HashMap<Event, ArrayList<State>> transitions = s.getAllTransitions();
-        for (Map.Entry<Event, ArrayList<State>> transition : transitions.entrySet()) {
-            Event event = transition.getKey();
-            if (event == e) return true;
-        }
-        return false;
-    }
-
-    private boolean stateAlreadyUsed(State s, State nextS) {
-        HashMap<Event, ArrayList<State>> transitions = s.getAllTransitions();
-        for (Map.Entry<Event, ArrayList<State>> transition : transitions.entrySet()) {
-            Event event = transition.getKey();
-            ArrayList<State> nextStates = transition.getValue();
-            for (int i = 0; i < nextStates.size(); i++) {
-                State nextState = nextStates.get(i);
-                if (nextState == nextS) return true;
-            }
-        }
-        return false;
-    }
-        
 
 
     private int getRandomNumberOfTransitions() {
@@ -227,153 +335,6 @@ public class FsmGenerator extends JFrame implements ActionListener,
         return randValue;
     }
 
-                                                        
-                                                        
-    private Event getRandomEvent() {
-        int randValue = (int) (Math.random() * numberEventsDesired);
-        int asciiChar = 'a';
-        int newAsciiChar = asciiChar + (randValue % 26);
-        int asciiChar2 = randValue / 26;
-        String eventName;
-        if (asciiChar2 == 0)
-            eventName = String.valueOf((char) newAsciiChar);
-        else 
-            eventName = String.valueOf((char) newAsciiChar) +
-                String.valueOf((char) (asciiChar + asciiChar2));
-        
-        
-        //int newAsciiChar = 'a';
-        //String eventName = String.valueOf((char) newAsciiChar);
-        
-        Event event = eventList.get(eventName);
-        return event;
-    }
-
-
-    private State getRandomState(State parentState) {
-        double randVal = Math.random();
-        State nextState;
-        // Handle looping next-state:
-        if (randVal <= percentLoopingTransitions) {
-            // OK, we'll do a looping next-state.  NOW, see if it should be 
-            //   a self-looping transition, or looping to an already processed
-            //   state:
-            double randWhichLooping = Math.random();
-            // test for case where we'll do a self-loop (state loops to itself)
-            if (randWhichLooping <= percentSelfLooping &&
-                !(alreadySelfLooping(parentState))) {
-                nextState = parentState;
-                // Otherwise, do a loop to a different, already processed state:
-            } else {
-                nextState = getRandomAlreadyProcessedState();
-                if (nextState == null)
-                    nextState = getRandomUnprocessedState(parentState);
-            }
-            // handle non-looping next-state:
-        } else {
-            nextState = getRandomUnprocessedState(parentState);
-        }
-        return nextState;
-    }
-
-
-    private boolean alreadySelfLooping(State s) {
-        HashMap<Event, ArrayList<State>> transitions = 
-            s.getAllTransitions();
-
-        if (transitions == null) return false;
-        for (Map.Entry<Event, ArrayList<State>> eventEntry : 
-                 transitions.entrySet()) {
-            ArrayList<State> nextStates = eventEntry.getValue();
-            if (nextStates == null) continue;
-            for (int j = 0; j < nextStates.size(); j++) {
-                State nextState = nextStates.get(j);
-                if (nextState == s) return true;
-            }
-        }
-        return false;
-    }
-    
-
-    private State getRandomAlreadyProcessedState() {
-        // First, get the number of processed states:
-        int size = processedStates.size();
-
-        if (size == 0) return null;
-
-        // Now get the list of processStates, so that we can index into it,
-        //  rather than using a get:
-        Set<String> keys = processedStates.keySet();
-        String[] stateNames = keys.toArray(new String[0]);
-        // Now, get a random number to index into this list of (processed)
-        //  state names:
-        
-        int randIndex = (int) (Math.random() * size);
-        String stateName = stateNames[randIndex];
-        State nextState = processedStates.get(stateName);
-        return nextState;
-    }
-
-
-    private State getRandomUnprocessedState(State s) {
-        // First, get the number of unprocessed states:
-        int size = unprocessedStates.size();
-
-        if (size == 0) return null;
-
-        // Now get the list of unprocessStates, so that we can index into it,
-        //  rather than using a get:
-        Set<String> keys = unprocessedStates.keySet();
-        String[] stateNames = keys.toArray(new String[keys.size()]);
-        
-        // if only one unprocessed state, return it IF it's not the same as the parent state
-        //  (because this routine is for non-self looping transitions)
-        if (size == 1) {
-            if (s != unprocessedStates.get(stateNames[0]))
-                return unprocessedStates.get(stateNames[0]);
-            else return null;
-        }
-
-        State nextState;
-        // Now, get a random number to index into this list of (unprocessed)
-        //  state names:
-        do {
-            int randIndex = (int) (Math.random() * size);
-            String stateName = stateNames[randIndex];
-            nextState = unprocessedStates.get(stateName);
-            // Make sure the random state we get is NOT == s
-        } while (nextState == s);
-        return nextState;
-    }
-                                                        
-
-    
-    // For the case of minNumberEventsPerState = 0, and still some 
-    //  unprocessed states left, after creating random children from 
-    //  the initial state:
-    private void fitInRemainingUnusedStates() {
-        // While any unprocessedStates left in list:
-        while (unprocessedStates.size() > 0) {
-            // First, pick a random PROCESSED state
-            State processedState = getRandomAlreadyProcessedState();
-            // Now, see if its number-of-children-states = maxNumberEventsPerState
-            // If so, loop back up to pick a (new) random PROCESSED state
-            if (processedState.getNumberOfTransitions() == maxNumberEventsPerState)
-                continue;
-            // Otherwise, pick a random UNPROCESSED state
-            State unprocessedState = getRandomUnprocessedState(processedState);
-            // Pick a random event
-            Event event = getRandomEvent();
-            // Now, create a transition from the random processed state to
-            //  the random unprocessed state; NOTE that this child state will
-            //  NOT have any children - ok, b/c minNumberEventsPerState = 0
-            processedState.createTransition(event, unprocessedState);
-            // Now, remove this child state from the list of unprocessed states:
-            unprocessedStates.remove(unprocessedState.getName());
-            processedStates.put(unprocessedState.getName(), unprocessedState);
-        }
-        return;
-    }
 
 // *****************************************
 
