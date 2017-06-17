@@ -46,9 +46,6 @@ public class FsmGenerator extends JFrame implements ActionListener,
     //  looping, otherwise will have an INFINITE number of states
     private int minNumberEventsPerState;
 
-    private double oneOverNumPossibleTrans;
-    private double oneOverNumberEvents;
-
     // This will be a number from 0.0 to (slightly) less than 1.0
     private double percentLoopingTransitions;
     // This refers to which percentage of the looping transitions, should be 
@@ -225,7 +222,7 @@ public class FsmGenerator extends JFrame implements ActionListener,
 
 
     private int getRandomNumberOfTransitions() {
-        int randValue = (int) (Math.random() / oneOverNumPossibleTrans);
+        int randValue = (int) (Math.random() * (maxNumberEventsPerState - minNumberEventsPerState));
         randValue += minNumberEventsPerState;
         return randValue;
     }
@@ -233,7 +230,7 @@ public class FsmGenerator extends JFrame implements ActionListener,
                                                         
                                                         
     private Event getRandomEvent() {
-        int randValue = (int) (Math.random() / oneOverNumberEvents);
+        int randValue = (int) (Math.random() * numberEventsDesired);
         int asciiChar = 'a';
         int newAsciiChar = asciiChar + (randValue % 26);
         int asciiChar2 = randValue / 26;
@@ -336,14 +333,12 @@ public class FsmGenerator extends JFrame implements ActionListener,
                 return unprocessedStates.get(stateNames[0]);
             else return null;
         }
-        
-        double oneOverSize = 1.0 / size;
 
         State nextState;
         // Now, get a random number to index into this list of (unprocessed)
         //  state names:
         do {
-            int randIndex = (int) (Math.random() / oneOverSize);
+            int randIndex = (int) (Math.random() * size);
             String stateName = stateNames[randIndex];
             nextState = unprocessedStates.get(stateName);
             // Make sure the random state we get is NOT == s
@@ -498,10 +493,6 @@ public class FsmGenerator extends JFrame implements ActionListener,
             percentLoopingTransitions = inputPanel.getPercentLoopingTransitions();
             percentSelfLooping = inputPanel.getPercentSelfLooping();
             
-            oneOverNumPossibleTrans = 1.0 /
-                (maxNumberEventsPerState - minNumberEventsPerState + 1);
-            oneOverNumberEvents = 1.0 / numberEventsDesired;
-
             fsmOutputFilename = inputPanel.getOutputFSMfilname();
             
             // Now can create the random fsm with the user-requested parameters:
